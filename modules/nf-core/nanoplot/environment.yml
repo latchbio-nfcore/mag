@@ -1,7 +1,7 @@
-name: custom_dumpsoftwareversions
+name: nanoplot
 channels:
   - conda-forge
   - bioconda
   - defaults
 dependencies:
-  - bioconda::multiqc=1.19
+  - bioconda::nanoplot=1.41.6
