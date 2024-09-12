@@ -1,684 +1,819 @@
-
-from dataclasses import dataclass
 import typing
+from dataclasses import dataclass
+
 import typing_extensions
-
 from flytekit.core.annotation import FlyteAnnotation
-
-from latch.types.metadata import NextflowParameter
-from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import Multiselect, NextflowParameter
 
-# Import these into your `__init__.py` file:
-#
-# from .parameters import generated_parameters
+
+# sample,run,group,short_reads_1,short_reads_2,long_reads
+@dataclass
+class SampleSheet:
+    sample: str
+    run: typing.Optional[str]
+    group: str
+    short_reads_1: LatchFile
+    short_reads_2: typing.Optional[LatchFile]
+    long_reads: typing.Optional[LatchFile]
+
+
+# id,group,assembler,fasta
+@dataclass
+class Assembly_SampleSheet:
+    id: str
+    group: str
+    assembler: str
+    fasta: LatchFile
+
 
 generated_parameters = {
-    'input': NextflowParameter(
+    "input": NextflowParameter(
+        type=typing.List[SampleSheet],
+        display_name="Samplesheet",
+        samplesheet_type="csv",
+        samplesheet=True,
+        section_title=None,
+        description="CSV samplesheet file containing information about the samples in the experiment.",
+    ),
+    "run_name": NextflowParameter(
         type=str,
-        default=None,
-        section_title='Input/output options',
-        description='CSV samplesheet file containing information about the samples in the experiment.',
+        display_name="Run Name",
+        section_title=None,
+        description="Run Name",
     ),
-    'single_end': NextflowParameter(
-        type=typing.Optional[bool],
+    "single_end": NextflowParameter(
+        type=bool,
+        default=False,
+        section_title=None,
+        display_name="Single End",
+        description="Specifies that the input is single-end reads.",
+    ),
+    "assembly_input": NextflowParameter(
+        type=typing.List[Assembly_SampleSheet],
         default=None,
         section_title=None,
-        description='Specifies that the input is single-end reads.',
+        samplesheet_type="csv",
+        samplesheet=True,
+        display_name="Assembly Input",
+        description="Additional input CSV samplesheet containing information about pre-computed assemblies. When set, both read pre-processing and assembly are skipped and the pipeline begins at the binning stage.",
     ),
-    'assembly_input': NextflowParameter(
+    "outdir": NextflowParameter(
+        type=typing_extensions.Annotated[LatchDir, FlyteAnnotation({"output": True})],
+        default=None,
+        section_title=None,
+        display_name="Output Directory",
+        description="The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.",
+    ),
+    "email": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Additional input CSV samplesheet containing information about pre-computed assemblies. When set, both read pre-processing and assembly are skipped and the pipeline begins at the binning stage.',
+        description="Email address for completion summary.",
     ),
-    'outdir': NextflowParameter(
-        type=typing_extensions.Annotated[LatchDir, FlyteAnnotation({'output': True})],
-        default=None,
-        section_title=None,
-        description='The output directory where the results will be saved. You have to use absolute paths to storage on Cloud infrastructure.',
-    ),
-    'email': NextflowParameter(
+    "multiqc_title": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Email address for completion summary.',
+        display_name="Multi QC Title",
+        description="MultiQC report title. Printed as page header, used for filename if not otherwise specified.",
     ),
-    'multiqc_title': NextflowParameter(
+    "multiqc_methods_description": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='MultiQC report title. Printed as page header, used for filename if not otherwise specified.',
+        display_name="MultiQC Methods Description",
+        description="Custom MultiQC yaml file containing HTML including a methods description.",
     ),
-    'multiqc_methods_description': NextflowParameter(
-        type=typing.Optional[str],
+    "megahit_fix_cpu_1": NextflowParameter(
+        type=bool,
         default=None,
-        section_title='Generic options',
-        description='Custom MultiQC yaml file containing HTML including a methods description.',
+        section_title=None,
+        display_name="MEGAHIT nCPUs",
+        description="Fix number of CPUs for MEGAHIT to 1. Not increased with retries.",
     ),
-    'megahit_fix_cpu_1': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title='Reproducibility options',
-        description='Fix number of CPUs for MEGAHIT to 1. Not increased with retries.',
-    ),
-    'spades_fix_cpus': NextflowParameter(
+    "spades_fix_cpus": NextflowParameter(
         type=typing.Optional[int],
         default=-1,
         section_title=None,
-        description='Fix number of CPUs used by SPAdes. Not increased with retries.',
+        display_name="SPADES nCPUs",
+        description="Fix number of CPUs used by SPAdes. Not increased with retries.",
     ),
-    'spadeshybrid_fix_cpus': NextflowParameter(
+    "spadeshybrid_fix_cpus": NextflowParameter(
         type=typing.Optional[int],
         default=-1,
         section_title=None,
-        description='Fix number of CPUs used by SPAdes hybrid. Not increased with retries.',
+        display_name="SPADESHybrid nCPUs",
+        description="Fix number of CPUs used by SPAdes hybrid. Not increased with retries.",
     ),
-    'metabat_rng_seed': NextflowParameter(
+    "metabat_rng_seed": NextflowParameter(
         type=typing.Optional[int],
         default=1,
         section_title=None,
-        description='RNG seed for MetaBAT2.',
+        display_name="MetaBAT Random Seed",
+        description="RNG seed for MetaBAT2.",
     ),
-    'clip_tool': NextflowParameter(
-        type=typing.Optional[str],
-        default='fastp',
-        section_title='Quality control for short reads options',
-        description='Specify which adapter clipping tool to use.',
+    "trimming_tool": NextflowParameter(
+        type=str,
+        section_title=None,
     ),
-    'save_clipped_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "clip_tool": NextflowParameter(
+        type=str,
+        default="fastp",
+        display_name="Adapter Trimming Tool",
+        section_title=None,
+        description="Specify which adapter clipping tool to use.",
+    ),
+    "save_clipped_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Specify to save the resulting clipped FASTQ files to --outdir.',
+        display_name="Save Clipped Reads",
+        description="Specify to save the resulting clipped FASTQ files to --outdir.",
     ),
-    'reads_minlength': NextflowParameter(
+    "reads_minlength": NextflowParameter(
         type=typing.Optional[int],
         default=15,
         section_title=None,
-        description='The minimum length of reads must have to be retained for downstream analysis.',
+        display_name="Min. Read Length",
+        description="The minimum length of reads must have to be retained for downstream analysis.",
     ),
-    'fastp_qualified_quality': NextflowParameter(
+    "fastp_qualified_quality": NextflowParameter(
         type=typing.Optional[int],
         default=15,
         section_title=None,
-        description='Minimum phred quality value of a base to be qualified in fastp.',
+        display_name="Minimum FastP Quality",
+        description="Minimum phred quality value of a base to be qualified in fastp.",
     ),
-    'fastp_cut_mean_quality': NextflowParameter(
+    "fastp_cut_mean_quality": NextflowParameter(
         type=typing.Optional[int],
         default=15,
         section_title=None,
-        description='The mean quality requirement used for per read sliding window cutting by fastp.',
+        display_name="FastP Mean Quality",
+        description="The mean quality requirement used for per read sliding window cutting by fastp.",
     ),
-    'fastp_save_trimmed_fail': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
+    "fastp_save_trimmed_fail": NextflowParameter(
+        type=bool,
+        default=False,
         section_title=None,
-        description='Save reads that fail fastp filtering in a separate file. Not used downstream.',
+        display_name="Save Poor Quality Reads",
+        description="Save reads that fail fastp filtering in a separate file. Not used downstream.",
     ),
-    'adapterremoval_minquality': NextflowParameter(
+    "adapterremoval_minquality": NextflowParameter(
         type=typing.Optional[int],
         default=2,
         section_title=None,
-        description='The minimum base quality for low-quality base trimming by AdapterRemoval.',
+        display_name="Quality Threshold for Adapter Sequences",
+        description="The minimum base quality for low-quality base trimming by AdapterRemoval.",
     ),
-    'adapterremoval_trim_quality_stretch': NextflowParameter(
-        type=typing.Optional[bool],
+    "adapterremoval_trim_quality_stretch": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Turn on quality trimming by consecutive stretch of low quality bases, rather than by window.',
+        display_name="Quality Trimming by a Consecutive Stretch",
+        description="Turn on quality trimming by consecutive stretch of low quality bases, rather than by window.",
     ),
-    'adapterremoval_adapter1': NextflowParameter(
+    "adapterremoval_adapter1": NextflowParameter(
         type=typing.Optional[str],
-        default='AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG',
+        default="AGATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG",
         section_title=None,
-        description='Forward read adapter to be trimmed by AdapterRemoval.',
+        display_name="Forward Adapter Sequence",
+        description="Forward read adapter to be trimmed by AdapterRemoval.",
     ),
-    'adapterremoval_adapter2': NextflowParameter(
+    "adapterremoval_adapter2": NextflowParameter(
         type=typing.Optional[str],
-        default='AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT',
+        default="AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGATCTCGGTGGTCGCCGTATCATT",
         section_title=None,
-        description='Reverse read adapter to be trimmed by AdapterRemoval for paired end data.',
+        display_name="Reverse Adapter Sequence",
+        description="Reverse read adapter to be trimmed by AdapterRemoval for paired end data.",
     ),
-    'host_genome': NextflowParameter(
-        type=typing.Optional[str],
+    "host_fasta": NextflowParameter(
+        type=typing.Optional[LatchFile],
         default=None,
         section_title=None,
-        description='Name of iGenomes reference for host contamination removal.',
+        display_name="Fasta File of Host Genomes to Remove",
+        description="Fasta reference file for host contamination removal.",
     ),
-    'host_fasta': NextflowParameter(
-        type=typing.Optional[str],
+    "host_removal_verysensitive": NextflowParameter(
+        type=bool,
+        default=False,
+        section_title=None,
+        display_name="Align Reads to Host Genome (very sensitive)",
+        description="Use the `--very-sensitive` instead of the`--sensitive`setting for Bowtie 2 to map reads against the host genome.",
+    ),
+    "host_removal_save_ids": NextflowParameter(
+        type=bool,
+        default=True,
+        section_title=None,
+        display_name="Save IDs of the Reads removed",
+        description="Save the read IDs of removed host reads.",
+    ),
+    "save_hostremoved_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Fasta reference file for host contamination removal.',
+        display_name="Save IDs of the Reads removed",
+        description="Specify to save input FASTQ files with host reads removed to --outdir.",
     ),
-    'host_removal_verysensitive': NextflowParameter(
-        type=typing.Optional[bool],
+    "keep_phix": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Use the `--very-sensitive` instead of the`--sensitive`setting for Bowtie 2 to map reads against the host genome.',
+        display_name="Keep PhiX Genome",
+        description="Keep reads similar to the Illumina internal standard PhiX genome.",
     ),
-    'host_removal_save_ids': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_clipping": NextflowParameter(
+        type=bool,
+        default=False,
+        section_title=None,
+        display_name="Skip Clipping",
+        description="Skip read preprocessing using fastp or adapterremoval.",
+    ),
+    "save_phixremoved_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save the read IDs of removed host reads.',
+        display_name="Skip PhiX Reads Removed",
+        description="Specify to save input FASTQ files with phiX reads removed to --outdir.",
     ),
-    'save_hostremoved_reads': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
+    "bbnorm": NextflowParameter(
+        type=bool,
+        default=False,
         section_title=None,
-        description='Specify to save input FASTQ files with host reads removed to --outdir.',
+        display_name="Run BBNorm",
+        description="Run BBnorm to normalize sequence depth.",
     ),
-    'keep_phix': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Keep reads similar to the Illumina internal standard PhiX genome.',
-    ),
-    'skip_clipping': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Skip read preprocessing using fastp or adapterremoval.',
-    ),
-    'save_phixremoved_reads': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Specify to save input FASTQ files with phiX reads removed to --outdir.',
-    ),
-    'bbnorm': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Run BBnorm to normalize sequence depth.',
-    ),
-    'bbnorm_target': NextflowParameter(
+    "bbnorm_target": NextflowParameter(
         type=typing.Optional[int],
         default=100,
         section_title=None,
-        description='Set BBnorm target maximum depth to this number.',
+        display_name="Target Depth",
+        description="Set BBnorm target maximum depth to this number.",
     ),
-    'bbnorm_min': NextflowParameter(
+    "bbnorm_min": NextflowParameter(
         type=typing.Optional[int],
         default=5,
         section_title=None,
-        description='Set BBnorm minimum depth to this number.',
+        display_name="Minimum Depth",
+        description="Set BBnorm minimum depth to this number.",
     ),
-    'save_bbnorm_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_bbnorm_reads": NextflowParameter(
+        type=bool,
+        default=False,
+        section_title=None,
+        display_name="Save BBNormalized Read Files",
+        description="Save normalized read files to output directory.",
+    ),
+    "skip_adapter_trimming": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save normalized read files to output directory.',
+        display_name="Skip Adapter Trimming",
+        description="Skip removing adapter sequences from long reads.",
     ),
-    'skip_adapter_trimming': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title='Quality control for long reads options',
-        description='Skip removing adapter sequences from long reads.',
-    ),
-    'longreads_min_length': NextflowParameter(
+    "longreads_min_length": NextflowParameter(
         type=typing.Optional[int],
         default=1000,
         section_title=None,
-        description='Discard any read which is shorter than this value.',
+        display_name="Min Length Long Reads Adapter Trimming",
+        description="Discard any read which is shorter than this value.",
     ),
-    'longreads_keep_percent': NextflowParameter(
+    "longreads_keep_percent": NextflowParameter(
         type=typing.Optional[int],
         default=90,
         section_title=None,
-        description='Keep this percent of bases.',
+        display_name="Percent Long Read Bases Kept",
+        description="Keep this percent of bases.",
     ),
-    'longreads_length_weight': NextflowParameter(
+    "longreads_length_weight": NextflowParameter(
         type=typing.Optional[int],
         default=10,
         section_title=None,
-        description='The higher the more important is read length when choosing the best reads.',
+        display_name="Long Reads Length Weight",
+        description="The higher the more important is read length when choosing the best reads.",
     ),
-    'keep_lambda': NextflowParameter(
-        type=typing.Optional[bool],
+    "keep_lambda": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Keep reads similar to the ONT internal standard Escherichia virus Lambda genome.',
+        display_name="Keep Lambda Phage Genome",
+        description="Keep reads similar to the ONT internal standard Escherichia virus Lambda genome.",
     ),
-    'save_lambdaremoved_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_lambdaremoved_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Specify to save input FASTQ files with lamba reads removed  to --outdir.',
+        display_name="Save Lambda Phage Reads",
+        description="Specify to save input FASTQ files with lamba reads removed  to --outdir.",
     ),
-    'save_porechop_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_porechop_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Specify to save the resulting clipped FASTQ files to --outdir.',
+        display_name="Save Porechopped Reads",
+        description="Specify to save the resulting clipped FASTQ files to --outdir.",
     ),
-    'save_filtlong_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_filtlong_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Specify to save the resulting length filtered FASTQ files to --outdir.',
+        display_name="Save Discarded Long Reads",
+        description="Specify to save the resulting length filtered FASTQ files to --outdir.",
     ),
-    'centrifuge_db': NextflowParameter(
+    "centrifuge_db": NextflowParameter(
         type=typing.Optional[LatchFile],
         default=None,
-        section_title='Taxonomic profiling options',
-        description='Database for taxonomic binning with centrifuge.',
+        section_title=None,
+        display_name="Centrifuge DB",
+        description="Database for taxonomic binning with centrifuge.",
     ),
-    'kraken2_db': NextflowParameter(
-        type=typing.Optional[LatchFile],
+    "kraken2_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='Database for taxonomic binning with kraken2.',
+        display_name="Kraken2 DB",
+        description="Database for taxonomic binning with kraken2.",
     ),
-    'krona_db': NextflowParameter(
+    "krona_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
+        default=None,
+        section_title=None,
+        display_name="Krona DB",
+        description="Database for taxonomic binning with krona",
+    ),
+    "skip_krona": NextflowParameter(
+        type=bool,
+        default=None,
+        section_title=None,
+        display_name="Skip Krona",
+        description="Skip creating a krona plot for taxonomic binning.",
+    ),
+    "cat_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
+        default=None,
+        section_title=None,
+        display_name="CAT DB",
+        description="Database for taxonomic classification of metagenome assembled genomes. Can be either a zipped file or a directory containing the extracted output of such.",
+    ),
+    "cat_db_generate": NextflowParameter(
+        type=bool,
+        default=None,
+        section_title=None,
+        display_name="Generate CAT Database",
+        description="Generate CAT database.",
+    ),
+    "save_cat_db": NextflowParameter(
+        type=bool,
+        default=None,
+        section_title=None,
+        display_name="Save CAT Database",
+        description="Save the CAT database generated when specified by `--cat_db_generate`.",
+    ),
+    "cat_official_taxonomy": NextflowParameter(
+        type=bool,
+        default=True,
+        section_title=None,
+        display_name="Use CAT Official Taxonomy",
+        description="Only return official taxonomic ranks (Kingdom, Phylum, etc.) when running CAT.",
+    ),
+    "skip_gtdbtk": NextflowParameter(
+        type=bool,
+        default=None,
+        section_title=None,
+        display_name="Skip GTDB",
+        description="Skip the running of GTDB, as well as the automatic download of the database",
+    ),
+    "gtdb_db": NextflowParameter(
         type=typing.Optional[str],
+        default="https://data.ace.uq.edu.au/public/gtdb/data/releases/release214/214.1/auxillary_files/gtdbtk_r214_data.tar.gz",
+        section_title=None,
+        display_name="GTDB DB",
+        description="Specify the location of a GTDB-Tk database. Can be either an uncompressed directory or a `.tar.gz` archive. If not specified will be downloaded for you when GTDB-Tk or binning QC is not skipped.",
+    ),
+    "gtdb_mash": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='Database for taxonomic binning with krona',
+        display_name="GTDB-tk Mash DB",
+        description="Specify the location of a GTDB-Tk mash database. If missing, GTDB-Tk will skip the ani_screening step",
     ),
-    'skip_krona': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Skip creating a krona plot for taxonomic binning.',
-    ),
-    'cat_db': NextflowParameter(
-        type=typing.Optional[str],
-        default=None,
-        section_title=None,
-        description='Database for taxonomic classification of metagenome assembled genomes. Can be either a zipped file or a directory containing the extracted output of such.',
-    ),
-    'cat_db_generate': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Generate CAT database.',
-    ),
-    'save_cat_db': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Save the CAT database generated when specified by `--cat_db_generate`.',
-    ),
-    'cat_official_taxonomy': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Only return official taxonomic ranks (Kingdom, Phylum, etc.) when running CAT.',
-    ),
-    'skip_gtdbtk': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Skip the running of GTDB, as well as the automatic download of the database',
-    ),
-    'gtdb_db': NextflowParameter(
-        type=typing.Optional[str],
-        default='https://data.ace.uq.edu.au/public/gtdb/data/releases/release214/214.1/auxillary_files/gtdbtk_r214_data.tar.gz',
-        section_title=None,
-        description='Specify the location of a GTDBTK database. Can be either an uncompressed directory or a `.tar.gz` archive. If not specified will be downloaded for you when GTDBTK or binning QC is not skipped.',
-    ),
-    'gtdb_mash': NextflowParameter(
-        type=typing.Optional[str],
-        default=None,
-        section_title=None,
-        description='Specify the location of a GTDBTK mash database. If missing, GTDB-Tk will skip the ani_screening step',
-    ),
-    'gtdbtk_min_completeness': NextflowParameter(
+    "gtdbtk_min_completeness": NextflowParameter(
         type=typing.Optional[float],
-        default=50,
+        default=50.0,
         section_title=None,
-        description='Min. bin completeness (in %) required to apply GTDB-tk classification.',
+        display_name="GTDB MASH DB",
+        description="Min. bin completeness (in %) required to apply GTDB-tk classification.",
     ),
-    'gtdbtk_max_contamination': NextflowParameter(
+    "gtdbtk_max_contamination": NextflowParameter(
         type=typing.Optional[float],
-        default=10,
+        default=10.0,
         section_title=None,
-        description='Max. bin contamination (in %) allowed to apply GTDB-tk classification.',
+        display_name="GTDB Max Contamination",
+        description="Max. bin contamination (in %) allowed to apply GTDB-tk classification.",
     ),
-    'gtdbtk_min_perc_aa': NextflowParameter(
+    "gtdbtk_min_perc_aa": NextflowParameter(
         type=typing.Optional[float],
-        default=10,
+        default=10.0,
         section_title=None,
-        description='Min. fraction of AA (in %) in the MSA for bins to be kept.',
+        display_name="GTDB Min. Percent AA",
+        description="Min. fraction of AA (in %) in the MSA for bins to be kept.",
     ),
-    'gtdbtk_min_af': NextflowParameter(
+    "gtdbtk_min_af": NextflowParameter(
         type=typing.Optional[float],
         default=0.65,
         section_title=None,
-        description='Min. alignment fraction to consider closest genome.',
+        display_name="GTDB DB Min Alignment Fraction",
+        description="Min. alignment fraction to consider closest genome.",
     ),
-    'gtdbtk_pplacer_cpus': NextflowParameter(
-        type=typing.Optional[float],
+    "gtdbtk_pplacer_cpus": NextflowParameter(
+        type=typing.Optional[int],
         default=1,
         section_title=None,
-        description='Number of CPUs used for the by GTDB-Tk run tool pplacer.',
+        display_name="GTDB DB nCPUs (pplacer)",
+        description="Number of CPUs used for the by GTDB-Tk run tool pplacer.",
     ),
-    'gtdbtk_pplacer_scratch': NextflowParameter(
-        type=typing.Optional[bool],
+    "gtdbtk_pplacer_scratch": NextflowParameter(
+        type=bool,
         default=True,
         section_title=None,
-        description='Reduce GTDB-Tk memory consumption by running pplacer in a setting writing to disk.',
+        display_name="GTDB DB PPlacer Search",
+        description="Reduce GTDB-Tk memory consumption by running pplacer in a setting writing to disk.",
     ),
-    'genomad_db': NextflowParameter(
+    "genomad_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
+        default=None,
+        section_title=None,
+        display_name="geNomad DB",
+        description="Database for virus classification with geNomad",
+    ),
+    "coassemble_group": NextflowParameter(
+        type=bool,
+        default=None,
+        section_title=None,
+        display_name="Coassembly Group",
+        description="Co-assemble samples within one group, instead of assembling each sample separately.",
+    ),
+    "spades_options": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Database for virus classification with geNomad',
+        display_name="SPADES Options",
+        description="Additional custom options for SPAdes.",
     ),
-    'coassemble_group': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title='Assembly options',
-        description='Co-assemble samples within one group, instead of assembling each sample separately.',
-    ),
-    'spades_options': NextflowParameter(
+    "megahit_options": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Additional custom options for SPAdes.',
+        display_name="MEGAHIT Options",
+        description="Additional custom options for MEGAHIT.",
     ),
-    'megahit_options': NextflowParameter(
-        type=typing.Optional[str],
+    "skip_spades": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Additional custom options for MEGAHIT.',
+        display_name="Skip SPADES",
+        description="Skip Illumina-only SPAdes assembly.",
     ),
-    'skip_spades': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_spadeshybrid": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip Illumina-only SPAdes assembly.',
+        display_name="Skip SPADESHybrid",
+        description="Skip SPAdes hybrid assembly.",
     ),
-    'skip_spadeshybrid': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_megahit": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip SPAdes hybrid assembly.',
+        display_name="Skip MEGAHIT",
+        description="Skip MEGAHIT assembly.",
     ),
-    'skip_megahit': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_quast": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip MEGAHIT assembly.',
+        display_name="Skip QUAST",
+        description="Skip metaQUAST.",
     ),
-    'skip_quast': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_prodigal": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip metaQUAST.',
+        display_name="Skip Prodigal",
+        description="Skip Prodigal gene prediction",
     ),
-    'skip_prodigal': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title='Gene prediction and annotation options',
-        description='Skip Prodigal gene prediction',
-    ),
-    'skip_prokka': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_prokka": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip Prokka genome annotation.',
+        display_name="Skip Prokka",
+        description="Skip Prokka genome annotation.",
     ),
-    'skip_metaeuk': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_metaeuk": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip MetaEuk gene prediction and annotation',
+        display_name="Skip MetaEuk",
+        description="Skip MetaEuk gene prediction and annotation",
     ),
-    'metaeuk_mmseqs_db': NextflowParameter(
-        type=typing.Optional[str],
+    "metaeuk_mmseqs_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='A string containing the name of one of the databases listed in the [mmseqs2 documentation](https://github.com/soedinglab/MMseqs2/wiki#downloading-databases). This database will be downloaded and formatted for eukaryotic genome annotation. Incompatible with --metaeuk_db.',
+        display_name="MetaEuk mmseqs2 DB",
+        description="A string containing the name of one of the databases listed in the [mmseqs2 documentation](https://github.com/soedinglab/MMseqs2/wiki#downloading-databases). This database will be downloaded and formatted for eukaryotic genome annotation. Incompatible with --metaeuk_db.",
     ),
-    'metaeuk_db': NextflowParameter(
-        type=typing.Optional[str],
+    "metaeuk_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='Path to either a local fasta file of protein sequences, or to a directory containing an mmseqs2-formatted database, for annotation of eukaryotic genomes.',
+        display_name="MetaEuk DB",
+        description="Path to either a local fasta file of protein sequences, or to a directory containing an mmseqs2-formatted database, for annotation of eukaryotic genomes.",
     ),
-    'save_mmseqs_db': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_mmseqs_db": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save the downloaded mmseqs2 database specified in `--metaeuk_mmseqs_db`.',
+        display_name="Save mmseqs2 DB",
+        description="Save the downloaded mmseqs2 database specified in `--metaeuk_mmseqs_db`.",
     ),
-    'run_virus_identification': NextflowParameter(
-        type=typing.Optional[bool],
+    "run_virus_identification": NextflowParameter(
+        type=bool,
         default=None,
-        section_title='Virus identification options',
-        description='Run virus identification.',
+        section_title=None,
+        display_name="Run Virus Classification",
+        description="Run virus identification.",
     ),
-    'genomad_min_score': NextflowParameter(
+    "genomad_min_score": NextflowParameter(
         type=typing.Optional[float],
         default=0.7,
         section_title=None,
-        description='Minimum geNomad score for a sequence to be considered viral',
+        display_name="Min. geNomad Score",
+        description="Minimum geNomad score for a sequence to be considered viral",
     ),
-    'genomad_splits': NextflowParameter(
+    "genomad_splits": NextflowParameter(
         type=typing.Optional[int],
         default=1,
         section_title=None,
+        display_name="geNomad Splits",
         description="Number of groups that geNomad's MMSeqs2 databse should be split into (reduced memory requirements)",
     ),
-    'binning_map_mode': NextflowParameter(
+    "binning_map_mode": NextflowParameter(
         type=typing.Optional[str],
-        default='group',
-        section_title='Binning options',
-        description='Defines mapping strategy to compute co-abundances for binning, i.e. which samples will be mapped against the assembly.',
+        default="group",
+        section_title=None,
+        appearance_type=Multiselect(["all", "group", "own"], allow_custom=False),
+        display_name="Binning Map Mode",
+        description="Defines mapping strategy to compute co-abundances for binning, i.e. which samples will be mapped against the assembly.",
     ),
-    'skip_binning': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_binning": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip metagenome binning entirely',
+        display_name="Skip Binning",
+        description="Skip metagenome binning entirely",
     ),
-    'skip_metabat2': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_metabat2": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip MetaBAT2 Binning',
+        display_name="Skip MetaBAT2",
+        description="Skip MetaBAT2 Binning",
     ),
-    'skip_maxbin2': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_maxbin2": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip MaxBin2 Binning',
+        display_name="Skip MaxBin2",
+        description="Skip MaxBin2 Binning",
     ),
-    'skip_concoct': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_concoct": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Skip CONCOCT Binning',
+        display_name="Skip CONCOCT",
+        description="Skip CONCOCT Binning",
     ),
-    'min_contig_size': NextflowParameter(
+    "min_contig_size": NextflowParameter(
         type=typing.Optional[int],
         default=1500,
         section_title=None,
-        description='Minimum contig size to be considered for binning and for bin quality check.',
+        display_name="Min. Contig Size",
+        description="Minimum contig size to be considered for binning and for bin quality check.",
     ),
-    'min_length_unbinned_contigs': NextflowParameter(
+    "min_length_unbinned_contigs": NextflowParameter(
         type=typing.Optional[int],
         default=1000000,
         section_title=None,
-        description='Minimal length of contigs that are not part of any bin but treated as individual genome.',
+        display_name="Min. Length of Unbinned Contigs",
+        description="Minimal length of contigs that are not part of any bin but treated as individual genome.",
     ),
-    'max_unbinned_contigs': NextflowParameter(
+    "max_unbinned_contigs": NextflowParameter(
         type=typing.Optional[int],
         default=100,
         section_title=None,
-        description='Maximal number of contigs that are not part of any bin but treated as individual genome.',
+        display_name="Max Unbinned Contigs",
+        description="Maximal number of contigs that are not part of any bin but treated as individual genome.",
     ),
-    'bowtie2_mode': NextflowParameter(
+    "bowtie2_mode": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Bowtie2 alignment mode',
+        display_name="Bowtie2 alignment mode",
+        description="Bowtie2 alignment mode",
     ),
-    'save_assembly_mapped_reads': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_assembly_mapped_reads": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save the output of mapping raw reads back to assembled contigs',
+        display_name="Save Aligned Reads",
+        description="Save the output of mapping raw reads back to assembled contigs",
     ),
-    'bin_domain_classification': NextflowParameter(
-        type=typing.Optional[bool],
+    "bin_domain_classification": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Enable domain-level (prokaryote or eukaryote) classification of bins using Tiara. Processes which are domain-specific will then only receive bins matching the domain requirement.',
+        display_name="Bin Domain Classification",
+        description="Enable domain-level (prokaryote or eukaryote) classification of bins using Tiara. Processes which are domain-specific will then only receive bins matching the domain requirement.",
     ),
-    'tiara_min_length': NextflowParameter(
+    "tiara_min_length": NextflowParameter(
         type=typing.Optional[int],
         default=3000,
         section_title=None,
-        description='Minimum contig length for Tiara to use for domain classification. For accurate classification, should be longer than 3000 bp.',
+        display_name="Tiara Min Length",
+        description="Minimum contig length for Tiara to use for domain classification. For accurate classification, should be longer than 3000 bp.",
     ),
-    'skip_binqc': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_binqc": NextflowParameter(
+        type=bool,
         default=None,
-        section_title='Bin quality check options',
-        description='Disable bin QC with BUSCO or CheckM.',
-    ),
-    'binqc_tool': NextflowParameter(
-        type=typing.Optional[str],
-        default='busco',
         section_title=None,
-        description='Specify which tool for bin quality-control validation to use.',
+        display_name="Skip binQC",
+        description="Disable bin QC with BUSCO or CheckM.",
     ),
-    'busco_db': NextflowParameter(
+    "binqc_tool": NextflowParameter(
         type=typing.Optional[str],
         default=None,
         section_title=None,
-        description='Download URL for BUSCO lineage dataset, or path to a tar.gz archive, or local directory containing already downloaded and unpacked lineage datasets.',
+        display_name="BinQC Tool",
+        description="Specify which tool for bin quality-control validation to use.",
     ),
-    'busco_auto_lineage_prok': NextflowParameter(
-        type=typing.Optional[bool],
+    "busco_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='Run BUSCO with automated lineage selection, but ignoring eukaryotes (saves runtime).',
+        display_name="Busco DB",
+        description="Download URL for BUSCO lineage dataset, or path to a tar.gz archive, or local directory containing already downloaded and unpacked lineage datasets.",
     ),
-    'save_busco_db': NextflowParameter(
-        type=typing.Optional[bool],
+    "busco_auto_lineage_prok": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save the used BUSCO lineage datasets provided via `--busco_db`.',
+        display_name="Automate Prokaryote Lineage Selection",
+        description="Run BUSCO with automated lineage selection, but ignoring eukaryotes (saves runtime).",
     ),
-    'busco_clean': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_busco_db": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Enable clean-up of temporary files created during BUSCO runs.',
+        display_name="Save BUSCO DB",
+        description="Save the used BUSCO lineage datasets provided via `--busco_db`.",
     ),
-    'checkm_db': NextflowParameter(
-        type=typing.Optional[str],
+    "busco_clean": NextflowParameter(
+        type=bool,
+        default=True,
+        section_title=None,
+        display_name="Clean BUSCO Temporary Genes",
+        description="Enable clean-up of temporary files created during BUSCO runs.",
+    ),
+    "checkm_db": NextflowParameter(
+        type=typing.Optional[LatchDir],
         default=None,
         section_title=None,
-        description='Path to local folder containing already downloaded and uncompressed CheckM database.',
+        display_name="CheckM DB",
+        description="Path to local folder containing already downloaded and uncompressed CheckM database.",
     ),
-    'save_checkm_data': NextflowParameter(
-        type=typing.Optional[bool],
+    "save_checkm_data": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Save the used CheckM reference files downloaded when not using --checkm_db parameter.',
+        display_name="Save CheckM Data",
+        description="Save the used CheckM reference files downloaded when not using --checkm_db parameter.",
     ),
-    'refine_bins_dastool': NextflowParameter(
-        type=typing.Optional[bool],
+    "refine_bins_dastool": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Turn on bin refinement using DAS Tool.',
+        display_name="Refine Bins Using DAS Tool",
+        description="Turn on bin refinement using DAS Tool.",
     ),
-    'refine_bins_dastool_threshold': NextflowParameter(
+    "refine_bins_dastool_threshold": NextflowParameter(
         type=typing.Optional[float],
         default=0.5,
         section_title=None,
-        description='Specify single-copy gene score threshold for bin refinement.',
+        display_name="Refinement Threshold for DAS Tool",
+        description="Specify single-copy gene score threshold for bin refinement.",
     ),
-    'postbinning_input': NextflowParameter(
+    "postbinning_input": NextflowParameter(
         type=typing.Optional[str],
-        default='raw_bins_only',
+        default="raw_bins_only",
+        appearance_type=Multiselect(
+            ["raw_bins_only", "refined_bins_only", "both"], allow_custom=False
+        ),
         section_title=None,
-        description='Specify which binning output is sent for downstream annotation, taxonomic classification, bin quality control etc.',
+        display_name="Post Binning Output",
+        description="Specify which binning output is sent for downstream annotation, taxonomic classification, bin quality control etc.",
     ),
-    'run_gunc': NextflowParameter(
-        type=typing.Optional[bool],
+    "run_gunc": NextflowParameter(
+        type=bool,
+        default=False,
+        section_title=None,
+        display_name="Run GUNC",
+        description="Turn on GUNC genome chimerism checks",
+    ),
+    "gunc_db": NextflowParameter(
+        type=typing.Optional[LatchFile],
         default=None,
         section_title=None,
-        description='Turn on GUNC genome chimerism checks',
+        display_name="GUNC DB",
+        description="Specify a path to a pre-downloaded GUNC dmnd database file",
     ),
-    'gunc_db': NextflowParameter(
+    "gunc_database_type": NextflowParameter(
         type=typing.Optional[str],
+        default="progenomes",
+        appearance_type=Multiselect(["progenomes", "gtdb"], allow_custom=False),
+        section_title=None,
+        display_name="GUNC Database Types",
+        description="Specify which database to auto-download if not supplying own",
+    ),
+    "gunc_save_db": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='Specify a path to a pre-downloaded GUNC dmnd database file',
+        display_name="Save GUNC DB",
+        description="Save the used GUNC reference files downloaded when not using --gunc_db parameter.",
     ),
-    'gunc_database_type': NextflowParameter(
-        type=typing.Optional[str],
-        default='progenomes',
+    "ancient_dna": NextflowParameter(
+        type=bool,
+        default=False,
         section_title=None,
-        description='Specify which database to auto-download if not supplying own',
+        display_name="Ancient DNA Assembly",
+        description="Turn on/off the ancient DNA subworfklow",
     ),
-    'gunc_save_db': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title=None,
-        description='Save the used GUNC reference files downloaded when not using --gunc_db parameter.',
-    ),
-    'ancient_dna': NextflowParameter(
-        type=typing.Optional[bool],
-        default=None,
-        section_title='Ancient DNA assembly',
-        description='Turn on/off the ancient DNA subworfklow',
-    ),
-    'pydamage_accuracy': NextflowParameter(
+    "pydamage_accuracy": NextflowParameter(
         type=typing.Optional[float],
         default=0.5,
         section_title=None,
-        description='PyDamage accuracy threshold',
+        display_name="PyDamage Accuracy Threshold",
+        description="PyDamage accuracy threshold",
     ),
-    'skip_ancient_damagecorrection': NextflowParameter(
-        type=typing.Optional[bool],
+    "skip_ancient_damagecorrection": NextflowParameter(
+        type=bool,
         default=None,
         section_title=None,
-        description='deactivate damage correction of ancient contigs using variant and consensus calling',
+        display_name="Skip Ancient Damage Correction",
+        description="deactivate damage correction of ancient contigs using variant and consensus calling",
     ),
-    'freebayes_ploidy': NextflowParameter(
+    "freebayes_ploidy": NextflowParameter(
         type=typing.Optional[int],
         default=1,
         section_title=None,
-        description='Ploidy for variant calling',
+        display_name="Free Bayes Ploidy",
+        description="Ploidy for variant calling",
     ),
-    'freebayes_min_basequality': NextflowParameter(
+    "freebayes_min_basequality": NextflowParameter(
         type=typing.Optional[int],
         default=20,
         section_title=None,
-        description='minimum base quality required for variant calling',
+        display_name="Free Bayes Min Base Qiality",
+        description="minimum base quality required for variant calling",
     ),
-    'freebayes_minallelefreq': NextflowParameter(
+    "freebayes_minallelefreq": NextflowParameter(
         type=typing.Optional[float],
         default=0.33,
         section_title=None,
-        description='minimum minor allele frequency for considering variants',
+        display_name="Free Bayes Min Allele Frequency",
+        description="minimum minor allele frequency for considering variants",
     ),
-    'bcftools_view_high_variant_quality': NextflowParameter(
+    "bcftools_view_high_variant_quality": NextflowParameter(
         type=typing.Optional[int],
         default=30,
         section_title=None,
-        description='minimum genotype quality for considering a variant high quality',
+        display_name="BCFtools View High Variant Quality",
+        description="minimum genotype quality for considering a variant high quality",
     ),
-    'bcftools_view_medium_variant_quality': NextflowParameter(
+    "bcftools_view_medium_variant_quality": NextflowParameter(
         type=typing.Optional[int],
         default=20,
         section_title=None,
-        description='minimum genotype quality for considering a variant medium quality',
+        display_name="BCFtools View Medium Variant Quality",
+        description="minimum genotype quality for considering a variant medium quality",
     ),
-    'bcftools_view_minimal_allelesupport': NextflowParameter(
+    "bcftools_view_minimal_allelesupport": NextflowParameter(
         type=typing.Optional[int],
         default=3,
         section_title=None,
-        description='minimum number of bases supporting the alternative allele',
+        display_name="BCFtools View Min. Allele Support",
+        description="minimum number of bases supporting the alternative allele",
     ),
 }
-
