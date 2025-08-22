@@ -1,7 +1,5 @@
 from latch.types.directory import LatchDir
 from latch.types.metadata import (
-    Fork,
-    ForkBranch,
     LatchAuthor,
     NextflowMetadata,
     NextflowParameter,
@@ -18,7 +16,7 @@ flow = [
     Section(
         "Input/Options",
         Params("input", "outdir", "run_name"),
-        Spoiler("Optional", Params("assembly_input", "", "single_end")),
+        Spoiler("Optional", Params("assembly_input", "single_end")),
     ),
     Spoiler(
         "Optional Parameters",
@@ -38,6 +36,10 @@ flow = [
                 "skip_prodigal",
                 "skip_prokka",
                 "skip_metaeuk",
+                "skip_krona",
+                "skip_adapter_trimming",
+                "skip_gtdbtk",
+                "skip_ancient_damagecorrection",
             ),
         ),
         Spoiler(
@@ -53,29 +55,23 @@ flow = [
             "Quality Control",
             Spoiler(
                 "Read Trimming Options",
-                Params(
-                    "save_clipped_reads",
-                ),
-                Fork(
-                    "trimming_tool",
-                    "",
-                    fastp=ForkBranch(
-                        "FastP",
-                        Params(
-                            "reads_minlength",
-                            "fastp_qualified_quality",
-                            "fastp_cut_mean_quality",
-                            "fastp_save_trimmed_fail",
-                        ),
+                Params("clip_tool", "save_clipped_reads"),
+                Spoiler(
+                    "FastP Options",
+                    Params(
+                        "reads_minlength",
+                        "fastp_qualified_quality",
+                        "fastp_cut_mean_quality",
+                        "fastp_save_trimmed_fail",
                     ),
-                    adapterremoval=ForkBranch(
-                        "Adapter Sequence Removal",
-                        Params(
-                            "adapterremoval_minquality",
-                            "adapterremoval_trim_quality_stretch",
-                            "adapterremoval_adapter1",
-                            "adapterremoval_adapter2",
-                        ),
+                ),
+                Spoiler(
+                    "AdapterRemoval Options",
+                    Params(
+                        "adapterremoval_minquality",
+                        "adapterremoval_trim_quality_stretch",
+                        "adapterremoval_adapter1",
+                        "adapterremoval_adapter2",
                     ),
                 ),
             ),
@@ -98,7 +94,6 @@ flow = [
             Spoiler(
                 "Long Read Options",
                 Params(
-                    "skip_adapter_trimming",
                     "longreads_min_length",
                     "longreads_keep_percent",
                     "longreads_length_weight",
@@ -111,13 +106,7 @@ flow = [
         ),
         Spoiler(
             "Pre Binning Taxonomic Annotation",
-            Fork(
-                "pre_taxonomic_annotation",
-                "",
-                centrifuge=ForkBranch("centrifuge", Params("centrifuge_db")),
-                krona=ForkBranch("krona", Params("skip_krona", "krona_db")),
-                kraken=ForkBranch("kraken", Params("kraken_db")),
-            ),
+            Params("centrifuge_db", "kraken2_db", "krona_db"),
         ),
         Spoiler(
             "Contig Binning Options",
@@ -143,20 +132,15 @@ flow = [
             ),
             Spoiler(
                 "Binning Quality Control Options",
-                Fork(
-                    "binqc",
-                    "",
-                    checkm=ForkBranch(
-                        "CheckM", Params("checkm_db", "save_checkm_data")
-                    ),
-                    busco=ForkBranch(
-                        "BUSCO",
-                        Params(
-                            "busco_db",
-                            "busco_auto_lineage_prok",
-                            "save_busco_db",
-                            "busco_clean",
-                        ),
+                Params("binqc_tool"),
+                Spoiler("CheckM Options", Params("checkm_db", "save_checkm_data")),
+                Spoiler(
+                    "BUSCO Options",
+                    Params(
+                        "busco_db",
+                        "busco_auto_lineage_prok",
+                        "save_busco_db",
+                        "busco_clean",
                     ),
                 ),
                 Spoiler(
@@ -166,37 +150,32 @@ flow = [
             ),
             Spoiler(
                 "Post Binning Taxonomic Annotation",
-                Fork(
-                    "post_taxonomic_annotation",
-                    "",
-                    cat=ForkBranch(
-                        "CAT",
-                        Params(
-                            "cat_db",
-                            "cat_db_generate",
-                            "save_cat_db",
-                            "cat_official_taxonomy",
-                        ),
+                Spoiler(
+                    "CAT Options",
+                    Params(
+                        "cat_db",
+                        "cat_db_generate",
+                        "save_cat_db",
+                        "cat_official_taxonomy",
                     ),
-                    gtdb=ForkBranch(
-                        "GTDB",
-                        Params(
-                            "skip_gtdbtk",
-                            "gtdb_db",
-                            "gtdb_mash",
-                            "gtdbtk_min_completeness",
-                            "gtdbtk_max_contamination",
-                            "gtdbtk_min_perc_aa",
-                            "gtdbtk_min_af",
-                            "gtdbtk_pplacer_cpus",
-                            "gtdbtk_pplacer_scratch",
-                        ),
+                ),
+                Spoiler(
+                    "GTDB Options",
+                    Params(
+                        "gtdb_db",
+                        "gtdb_mash",
+                        "gtdbtk_min_completeness",
+                        "gtdbtk_max_contamination",
+                        "gtdbtk_min_perc_aa",
+                        "gtdbtk_min_af",
+                        "gtdbtk_pplacer_cpus",
+                        "gtdbtk_pplacer_scratch",
                     ),
                 ),
             ),
         ),
         Spoiler(
-            "Micro Eukaroyote Gene Prediction (metaeuk)",
+            "Micro Eukaryote Gene Prediction (metaeuk)",
             Params("metaeuk_mmseqs_db", "metaeuk_db", "save_mmseqs_db"),
         ),
         Spoiler(
@@ -213,7 +192,6 @@ flow = [
             Params(
                 "ancient_dna",
                 "pydamage_accuracy",
-                "skip_ancient_damagecorrection",
                 "freebayes_ploidy",
                 "freebayes_min_basequality",
                 "freebayes_minallelefreq",
